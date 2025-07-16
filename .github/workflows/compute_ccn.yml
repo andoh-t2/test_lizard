@@ -50,7 +50,7 @@ jobs:
             
             # lizardコマンドを実行し、エラー出力(stderr)も変数に含める。
             # "|| true" でコマンドが失敗してもステップが停止しないようにする。
-            lizard_output=$(lizard --CCN 7 --length 150 --arguments 7 -T nloc=100 $files 2>&1 || true)
+            lizard_output=$(lizard --CCN 7 --length 150 --arguments 7 -T nloc=100 --input_file diff_files.txt 2>&1 || true)
 
             # lizardの出力にエラーを示す文字列が含まれているかチェック
             if echo "$lizard_output" | grep -E -q "No parsable file found|Could not find the file|Traceback"; then
