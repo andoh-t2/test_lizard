@@ -40,9 +40,9 @@ jobs:
           if [ -z "$files" ]; then
             echo "No C++ source/header files changed." > comment.txt
           else
-            echo 'Cyclomatic Complexity Report (Lizard):\n' > comment.txt
+            echo 'Cyclomatic Complexity Report (Lizard):' > comment.txt
             echo '```' >> comment.txt
-            lizard --CCN 7 --languages=cpp $files | head -n 100 >> comment.txt
+            lizard --CCN 0 --languages=cpp $files | head -n 100 >> comment.txt
             echo '```' >> comment.txt
           fi
 
