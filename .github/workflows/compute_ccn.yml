@@ -12,10 +12,13 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-      - name: Checkout PR code
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # 差分比較に必要
+
+      - name: Checkout PR branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr checkout ${{ github.event.issue.number }}
 
       - name: Set up Python and Install Lizard
         run: pip install lizard
@@ -26,22 +29,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.issue.number }}
         run: |
-          # PRのブランチを 'pr_branch' という名前でローカルに取得
-          git fetch origin pull/$PR_NUMBER/head:pr_branch
-          
           # PRのマージ先ブランチのコミットSHAを取得
           base_sha=$(gh pr view $PR_NUMBER --json baseRefOid -q .baseRefOid)
           
-          # フェッチしたPRブランチの最新コミットSHAを取得
-          head_sha=$(git rev-parse pr_branch)
-          
-          # --- デバッグ用ログ出力 ---
-          echo "Base SHA: $base_sha"
-          echo "Head SHA: $head_sha"
-          
-          # ベースとヘッドの差分から変更されたC++/HPPファイルを取得
-          echo "Finding diff files..."
-          git diff --name-only "$base_sha"..."$head_sha" | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
+          # 現在チェックアウトしているブランチはPRのブランチなので、HEADが使える
+          git diff --name-only "$base_sha"...HEAD | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
           
           echo "--- diff_files.txt content ---"
           cat diff_files.txt
