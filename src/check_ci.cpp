@@ -1,14 +1,14 @@
 
 // Copyright (c) 2025 T2 Inc. All rights reserved.
 
-void Ignore(int n) {
+int Ignore(int n) {
   if (n == 0) {
     return 10;
   }
   return n;
 }
 
-void Check(int n) {
+int Check(int n) {
   if (n == 0) {
     ++n;
   }
