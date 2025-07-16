@@ -1,0 +1,53 @@
+name: Lizard on PR Comment (Diff Only)
+
+on:
+  issue_comment:
+    types: [created, edited]
+
+jobs:
+  lizard-on-command:
+    if: github.event.issue.pull_request != null && startsWith(github.event.comment.body, '|> compute ccn')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 差分比較に必要
+
+      - name: Set up Python and Install Lizard
+        run: pip install lizard
+
+      - name: Get diff file list
+        id: diff
+        env:
+            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+            # GitHub CLIでPRのベースとヘッドのコミットSHAを取得
+            base_sha=$(gh pr view $PR_NUMBER --json baseRefOid -q .baseRefOid)
+            head_sha=$(gh pr view $PR_NUMBER --json headRefOid -q .headRefOid)
+
+            # ベースとヘッドの差分から変更ファイルを取得
+            git diff --name-only "$base_sha"..."$head_sha" | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
+
+      - name: Run Lizard on diff files
+        if: success()
+        run: |
+          files=$(cat diff_files.txt | xargs)
+          if [ -z "$files" ]; then
+            echo "No C++ source/header files changed." > comment.txt
+          else
+            echo 'Cyclomatic Complexity Report (Lizard):\n' > comment.txt
+            echo '```' >> comment.txt
+            lizard --CCN 7 --languages=cpp $files | head -n 100 >> comment.txt
+            echo '```' >> comment.txt
+          fi
+
+      - name: Post comment to PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr comment ${{ github.event.issue.number }} --body-file comment.txt
