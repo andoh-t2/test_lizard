@@ -47,19 +47,31 @@ jobs:
           if [ -z "$files" ]; then
             echo "No C++ source/header files changed." > comment.txt
           else
-            # Lizardを実行し、出力を一旦変数に保存
-            lizard_output=$(lizard --CCN 7 --languages=cpp $files)
+            
+            # lizardコマンドを実行し、エラー出力(stderr)も変数に含める。
+            # "|| true" でコマンドが失敗してもステップが停止しないようにする。
+            lizard_output=$(lizard --CCN 7 --languages=cpp $files 2>&1 || true)
 
-            # Lizardの出力に「0 file analyzed」が含まれているかチェック
-            if echo "$lizard_output" | grep -q "0 file analyzed."; then
-              # 解析されなかった場合のエラーメッセージを作成
-              echo "⚠️ **Lizard did not analyze any files.**" > comment.txt
+            # lizardの出力にエラーを示す文字列が含まれているかチェック
+            if echo "$lizard_output" | grep -E -q "No parsable file found|Could not find the file|Traceback"; then
+              echo "❌ **Lizard execution failed**" > comment.txt
               echo "" >> comment.txt
-              echo '```' >> comment.txt
+              echo "An error occurred while running the complexity analysis. This might be due to a syntax error in the source code." >> comment.txt
+              echo "" >> comment.txt
+              echo "```" >> comment.txt
+              echo "# Full output from Lizard:" >> comment.txt
               echo "$lizard_output" >> comment.txt
-              echo '```' >> comment.txt
+              echo "```" >> comment.txt
+            # 正常に実行されたが、解析できるファイルが0だった場合
+            elif echo "$lizard_output" | grep -q "0 file analyzed."; then
+              echo "⚠️ **Lizard ran but did not analyze any files.**" > comment.txt
+              echo "" >> comment.txt
+              echo "This can happen if the tool could not parse the file contents. Please check for syntax errors." >> comment.txt
+              echo "```" >> comment.txt
+              echo "$lizard_output" >> comment.txt
+              echo "```" >> comment.txt
+            # 完全に成功した場合
             else
-              # 正常に解析された場合のレポートを作成
               echo '✅ **Cyclomatic Complexity Report (Lizard):**' > comment.txt
               echo '```' >> comment.txt
               echo "$lizard_output" | head -n 100 >> comment.txt
