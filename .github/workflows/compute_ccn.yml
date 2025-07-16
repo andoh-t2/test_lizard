@@ -23,15 +23,29 @@ jobs:
       - name: Get diff file list
         id: diff
         env:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            PR_NUMBER: ${{ github.event.issue.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.issue.number }}
         run: |
-            # GitHub CLIでPRのベースとヘッドのコミットSHAを取得
-            base_sha=$(gh pr view $PR_NUMBER --json baseRefOid -q .baseRefOid)
-            head_sha=$(gh pr view $PR_NUMBER --json headRefOid -q .headRefOid)
-
-            # ベースとヘッドの差分から変更ファイルを取得
-            git diff --name-only "$base_sha"..."$head_sha" | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
+          # PRのブランチを 'pr_branch' という名前でローカルに取得
+          git fetch origin pull/$PR_NUMBER/head:pr_branch
+          
+          # PRのマージ先ブランチのコミットSHAを取得
+          base_sha=$(gh pr view $PR_NUMBER --json baseRefOid -q .baseRefOid)
+          
+          # フェッチしたPRブランチの最新コミットSHAを取得
+          head_sha=$(git rev-parse pr_branch)
+          
+          # --- デバッグ用ログ出力 ---
+          echo "Base SHA: $base_sha"
+          echo "Head SHA: $head_sha"
+          
+          # ベースとヘッドの差分から変更されたC++/HPPファイルを取得
+          echo "Finding diff files..."
+          git diff --name-only "$base_sha"..."$head_sha" | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
+          
+          echo "--- diff_files.txt content ---"
+          cat diff_files.txt
+          echo "------------------------------"
 
       - name: Run Lizard on diff files
         run: |
@@ -46,9 +60,6 @@ jobs:
             if echo "$lizard_output" | grep -q "0 file analyzed."; then
               # 解析されなかった場合のエラーメッセージを作成
               echo "⚠️ **Lizard did not analyze any files.**" > comment.txt
-              echo "" >> comment.txt
-              echo "This can happen if the changed files contain syntax errors that prevent parsing." >> comment.txt
-              echo "Please review the code and the full Lizard output below." >> comment.txt
               echo "" >> comment.txt
               echo '```' >> comment.txt
               echo "$lizard_output" >> comment.txt
