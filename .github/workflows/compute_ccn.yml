@@ -34,16 +34,32 @@ jobs:
             git diff --name-only "$base_sha"..."$head_sha" | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
 
       - name: Run Lizard on diff files
-        if: success()
         run: |
           files=$(cat diff_files.txt | xargs)
           if [ -z "$files" ]; then
             echo "No C++ source/header files changed." > comment.txt
           else
-            echo 'Cyclomatic Complexity Report (Lizard):' > comment.txt
-            echo '```' >> comment.txt
-            lizard --CCN 0 --languages=cpp $files | head -n 100 >> comment.txt
-            echo '```' >> comment.txt
+            # Lizardを実行し、出力を一旦変数に保存
+            lizard_output=$(lizard --CCN 7 --languages=cpp $files)
+
+            # Lizardの出力に「0 file analyzed」が含まれているかチェック
+            if echo "$lizard_output" | grep -q "0 file analyzed."; then
+              # 解析されなかった場合のエラーメッセージを作成
+              echo "⚠️ **Lizard did not analyze any files.**" > comment.txt
+              echo "" >> comment.txt
+              echo "This can happen if the changed files contain syntax errors that prevent parsing." >> comment.txt
+              echo "Please review the code and the full Lizard output below." >> comment.txt
+              echo "" >> comment.txt
+              echo '```' >> comment.txt
+              echo "$lizard_output" >> comment.txt
+              echo '```' >> comment.txt
+            else
+              # 正常に解析された場合のレポートを作成
+              echo '✅ **Cyclomatic Complexity Report (Lizard):**' > comment.txt
+              echo '```' >> comment.txt
+              echo "$lizard_output" | head -n 100 >> comment.txt
+              echo '```' >> comment.txt
+            fi
           fi
 
       - name: Post comment to PR
