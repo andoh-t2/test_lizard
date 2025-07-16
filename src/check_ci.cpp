@@ -28,7 +28,15 @@ void Check(int n) {
     m += m;
   }
 
+  if (m < 5) {
+    m += m;
+  }
+
   if (n < 5) {
+    n += 1;
+  }
+
+  if (100 < n) {
     n += 1;
   }
 
