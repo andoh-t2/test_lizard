@@ -54,7 +54,7 @@ jobs:
             echo "No C++ source/header files changed." > comment.txt
           else
             # Lizardを実行し、出力を一旦変数に保存
-            lizard_output=$(lizard --CCN 7 --languages=cpp $files)
+            lizard_output=$(lizard --CCN 7 --languages=cpp --input_file=diff_files.txt)
 
             # Lizardの出力に「0 file analyzed」が含まれているかチェック
             if echo "$lizard_output" | grep -q "0 file analyzed."; then
