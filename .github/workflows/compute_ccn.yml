@@ -65,7 +65,7 @@ jobs:
             echo "No functions exceeded the complexity threshold." >> comment.txt
           else
             # 警告ありの場合
-            echo '⚠️ **Cyclomatic Complexity Report (Warnings found)** 👮' > comment.txt
+            echo '⚠️🧨 **Cyclomatic Complexity Report (Warnings found)** 👮🚨' > comment.txt
             echo "" >> comment.txt
             echo "One or more functions exceeded the complexity threshold." >> comment.txt
           fi
