@@ -22,7 +22,7 @@ jobs:
       
       - name: Filter for C++ files
         uses: dorny/paths-filter@v3
-        id: changes
+        id: shell
         with:
           # 変更されたファイルリストをスペース区切りで取得
           list-files: 'space'
