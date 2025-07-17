@@ -60,6 +60,13 @@ jobs:
               echo "One or more functions exceeded the complexity threshold."
             } > comment-body.txt
           fi
+          
+          {
+            echo ""
+            echo '```'
+            echo "$lizard_output" | head -n 100
+            echo '```'
+          } >> comment-body.txt
 
       # C++ファイルに変更がなかった場合のコメントを作成
       - name: Prepare "No Changes" comment
