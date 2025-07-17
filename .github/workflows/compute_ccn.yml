@@ -19,33 +19,28 @@ jobs:
 
       - name: Set up Python and Install Lizard
         run: pip install lizard
+      
+      - name: Filter for C++ files
+        uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          # 変更されたファイルリストをスペース区切りで取得
+          list-files: 'space'
+          # 'cpp'という名前でフィルタを定義
+          filters: |
+            cpp:
+              - '**/*.cpp'
+              - '**/*.hpp'
 
-      - name: Get diff file list
-        id: diff
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run Lizard on changed files
+        if: steps.changes.outputs.cpp == 'true'
+        id: lizard
         run: |
-          # pull_requestイベントのコンテキストからマージ先ブランチのコミットSHAを取得
-          base_sha=${{ github.event.pull_request.base.sha }}
-          
-          # 現在のブランチ(HEAD)とマージ先ブランチの差分ファイルリストを取得
-          git diff --name-only "$base_sha"...HEAD | grep -E '\.(cpp|hpp)$' > diff_files.txt || true
-          
-          echo "--- diff_files.txt content ---"
-          cat diff_files.txt
-          echo "------------------------------"
+          pip install lizard
 
-      - name: Run Lizard on diff files
-        run: |
-          files=$(cat diff_files.txt | xargs)
-          if [ -z "$files" ]; then
-            echo "No C++ source/header files changed." > comment.txt
-            exit 0
-          fi
-            
-          # lizardコマンドを実行し、エラー出力(stderr)も変数に含める。
-          # "|| true" でコマンドが失敗してもステップが停止しないようにする。
-          if lizard_output=$(lizard --CCN 7 --length 150 --arguments 7 -T nloc=100 --input_file diff_files.txt); then
+          echo "Running Lizard on: ${{ steps.changes.outputs.cpp_files }}"
+          
+          if lizard_output=$(lizard --CCN 7 --length 150 --arguments 7 -T nloc=100 ${{ steps.changes.outputs.cpp_files }}); then
             exit_code=0
           else
             exit_code=$?
@@ -53,25 +48,34 @@ jobs:
 
           # 終了コードに基づいてメッセージを分岐
           if [ $exit_code -eq 0 ]; then
-            # 警告なしの場合
-            echo '✅ **Cyclomatic Complexity Report (No warnings)**' > comment.txt
-            echo "" >> comment.txt
-            echo "No functions exceeded the complexity threshold." >> comment.txt
+            {
+              echo '✅ **Cyclomatic Complexity Report (No warnings)**'
+              echo ""
+              echo "No functions exceeded the complexity threshold."
+            } > comment-body.txt
           else
-            # 警告ありの場合
-            echo '⚠️🧨 **Cyclomatic Complexity Report (Warnings found)** 👮🚨' > comment.txt
-            echo "" >> comment.txt
-            echo "One or more functions exceeded the complexity threshold." >> comment.txt
+            {
+              echo '⚠️🧨 **Cyclomatic Complexity Report (Warnings found)** 👮🚨'
+              echo ""
+              echo "One or more functions exceeded the complexity threshold."
+            } > comment-body.txt
           fi
 
-          # 共通のレポート内容を追記
-          echo "" >> comment.txt
-          echo '```' >> comment.txt
-          echo "$lizard_output" | head -n 100 >> comment.txt
-          echo '```' >> comment.txt
+      # C++ファイルに変更がなかった場合のコメントを作成
+      - name: Prepare "No Changes" comment
+        if: steps.changes.outputs.cpp == 'false'
+        id: no_changes
+        run: |
+          echo "😴 **Cyclomatic Complexity Report**" > comment-body.txt
+          echo "" >> comment-body.txt
+          echo "No changed C++ files to analyze." >> comment-body.txt
+          echo "comment_file=comment-body.txt" >> $GITHUB_OUTPUT
 
       - name: Post comment to PR
+        # lizardかno_changesステップが成功した場合のみ実行
+        if: success() && (steps.lizard.outputs.comment_file || steps.no_changes.outputs.comment_file)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh pr comment ${{ github.event.number }} --body-file comment.txt
+          COMMENT_FILE="${{ steps.lizard.outputs.comment_file || steps.no_changes.outputs.comment_file }}"
+          gh pr comment ${{ github.event.number }} --body-file "$COMMENT_FILE"
