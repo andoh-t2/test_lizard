@@ -51,7 +51,11 @@ jobs:
             
           # lizardコマンドを実行し、エラー出力(stderr)も変数に含める。
           # "|| true" でコマンドが失敗してもステップが停止しないようにする。
-          lizard_output=$(lizard --CCN 7 --length 150 --arguments 7 -T nloc=100 --input_file diff_files.txt)
+          if lizard_output=$(lizard --CCN 7 --length 150 --arguments 7 -T nloc=100 --input_file diff_files.txt); then
+            exit_code=0
+          else
+            exit_code=$?
+          fi
           exit_code=$? # Lizardの終了コードを取得
 
           # 終了コードに基づいてメッセージを分岐
