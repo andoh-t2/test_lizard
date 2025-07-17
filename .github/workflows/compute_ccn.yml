@@ -64,18 +64,24 @@ jobs:
       # C++ファイルに変更がなかった場合のコメントを作成
       - name: Prepare "No Changes" comment
         if: steps.changes.outputs.cpp == 'false'
-        id: no_changes
         run: |
-          echo "😴 **Cyclomatic Complexity Report**" > comment-body.txt
-          echo "" >> comment-body.txt
-          echo "No changed C++ files to analyze." >> comment-body.txt
-          echo "comment_file=comment-body.txt" >> $GITHUB_OUTPUT
+          {
+            echo "😴 **Cyclomatic Complexity Report**"
+            echo ""
+            echo "No changed C++ files to analyze."
+          } > comment-body.txt
 
+      # 生成されたコメントをPRに投稿
       - name: Post comment to PR
-        # lizardかno_changesステップが成功した場合のみ実行
-        if: success() && (steps.lizard.outputs.comment_file || steps.no_changes.outputs.comment_file)
+        # 先行ステップが成功またはスキップされた場合でも、このステップを常に実行する
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          COMMENT_FILE="${{ steps.lizard.outputs.comment_file || steps.no_changes.outputs.comment_file }}"
-          gh pr comment ${{ github.event.number }} --body-file "$COMMENT_FILE"
+          # コメントファイルが存在する場合のみ投稿を実行
+          if [ -f "comment-body.txt" ]; then
+            echo "Comment file found. Posting to PR..."
+            gh pr comment ${{ github.event.number }} --body-file "comment-body.txt"
+          else
+            echo "Comment file not found. Skipping comment."
+          fi
