@@ -13,7 +13,7 @@ jobs:
       pull-requests: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
@@ -21,7 +21,7 @@ jobs:
         run: pip install lizard
       
       - name: Filter for C++ files
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
         id: changes
         with:
           # 変更されたファイルリストをスペース区切りで取得
@@ -60,7 +60,7 @@ jobs:
               echo "One or more functions exceeded the complexity threshold."
             } > comment-body.txt
           fi
-          
+
           {
             echo ""
             echo '```'
