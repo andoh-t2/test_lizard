@@ -56,7 +56,6 @@ jobs:
           else
             exit_code=$?
           fi
-          exit_code=$? # Lizardの終了コードを取得
 
           # 終了コードに基づいてメッセージを分岐
           if [ $exit_code -eq 0 ]; then
